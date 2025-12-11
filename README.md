@@ -23,5 +23,5 @@ Additional exercise notebooks:
 - [Differential expression analysis](https://github.com/AlexsLemonade/training-modules/blob/master/scRNA-seq-advanced/exercise_03-diffexp.Rmd)
 - [Pathway analysis](https://github.com/AlexsLemonade/training-modules/blob/master/scRNA-seq-advanced/exercise_04-scrna_pathway.Rmd)
 - [Evaluating clusters](https://github.com/AlexsLemonade/training-modules/blob/master/scRNA-seq-advanced/exercise_05-cluster_evaluation.Rmd)
-=======
+
 
