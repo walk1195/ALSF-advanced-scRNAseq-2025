@@ -1,0 +1,539 @@
+---
+title: "Exercise: Pathway analysis with AUCell"
+author: Childhood Cancer Data Lab for ALSF
+date: 2024
+output:
+  html_notebook:
+    toc: true
+    toc_float: true
+---
+
+In this notebook, we will use `AUCell` with a custom gene set of tumor marker genes for Ewing sarcoma, as well as a collection from the Molecular Signatures Database (MSigDB) of your choosing.
+Because `AUCell` will assign cells as expressing (or not expressing) a gene set, it can be used as part of a strategy for cell typing or identifying malignant cells when a high quality marker gene set is available.
+Once tumor cells are identified using an automatically selected threshold, we can visualize that information or even use it in tandem with AUC values from other gene sets.
+
+Our goal in this notebook is to explore gene sets from MSigDB that may have different relative expression (i.e., AUC values) between malignant and non-malignant cells.
+We will do this by visualizing the AUC values.
+In practice, if we were to publish these results, we would want to explicitly test for significant differences in values, but that is beyond the scope of this notebook.
+
+In this notebook, you will:
+
+- Part A: Read in and prepare the data
+- Part B: Run `AUCell` with tumor marker genes
+- Part C: Run `AUCell` with an MSigDB collection
+- Part D: Visualize the results
+
+There are multiple Ewing sarcoma samples you can choose for your analysis, available in the following directory:
+
+```
+data/ewing-sarcoma/processed
+```
+
+The _solved version_ of this notebook will use the same sample that we used during instruction: `data/ewing-sarcoma/processed/SCPCS000490/SCPCL000822_processed.rds`
+But we encourage you to pick any sample you are interested in, perhaps by browsing the metadata located at: `data/ewing-sarcoma/annotations/ewing_sarcoma_sample_metadata.tsv`
+
+```{r}
+ewing_metadata <- readr::read_tsv('data/ewing-sarcoma/annotations/ewing_sarcoma_sample_metadata.tsv')
+
+View(ewing_metadata) # Choosing sample SCPCS000492 (library ID SCPCL000824)
+```
+
+## Setup
+
+### Libraries
+
+```{r libraries}
+# We will be loading a SingleCellExperiment object into our environment but don't need to see the startup messages
+suppressPackageStartupMessages({
+  library(SingleCellExperiment)
+})
+
+# Library we'll use for the gene set analysis itself
+library(AUCell)
+
+# Libraries for accessing and working with gene sets
+library(GSEABase)
+library(msigdbr)
+```
+
+### Set a seed
+
+Some genes sharing expression values or that are not detected will be randomly ordered in the `AUCell` rankings, so we need to set a seed using `set.seed()`.
+
+```{r set_seed, solution = TRUE}
+set.seed(2024)
+```
+
+### Directories and files
+
+#### Directories
+
+Set up the directories to read in a Ewing sarcoma `SingleCellExperiment` and output pathway analysis results.
+
+```{r set_up_directories, solution = TRUE}
+# Input data 
+ewing_data_dir <- file.path("data", "ewing-sarcoma")
+processed_dir <- file.path(ewing_data_dir, "processed")
+
+# Directory for holding pathway analysis results
+analysis_dir <- file.path("analysis", "ewing_sarcoma", "pathway-analysis")
+
+# Create if it doesn't exist yet
+fs::dir_create(analysis_dir)
+```
+
+#### Files
+
+`readr::read_tsv()` can read files from the internet directly if you provide it with a URL. 
+This URL points to a table of marker genes in [the Open Single-cell Pediatric Cancer Atlas project](https://openscpca.readthedocs.io/en/latest/).
+You can view the current version of analysis module it comes from here: <https://github.com/AlexsLemonade/OpenScPCA-analysis/tree/main/analyses/cell-type-ewings>.
+This notebook is generally adapted from that material!
+
+We are using what is called a permalink by including the commit information (`37423e7f42b597ae0402503e0c9ca464d8eb9ac1`), which guarantees we will always get the same version of the table.
+This can be a good practice for reproducibility.
+
+```{r marker_genes_url} 
+marker_genes_url <- "https://raw.githubusercontent.com/AlexsLemonade/OpenScPCA-analysis/37423e7f42b597ae0402503e0c9ca464d8eb9ac1/analyses/cell-type-ewings/references/visser-all-marker-genes.tsv"
+```
+
+Choose a Ewing sarcoma sample you'd like to read in and save the path to that file as a variable called `sce_file`.
+
+```{r sce_file, solution = TRUE}
+sce_file <- file.path(processed_dir,
+                           "SCPCS000492",
+                           "SCPCL000824_processed.rds")
+
+```
+
+Save the path to the output file (give it a descriptive name!) to a variable.
+You may want to come back to this filename after you've chosen a collection from MSigDB.
+
+```{r output_file, solution = TRUE}
+auc_output_file <- fs::path(analysis_dir, "ewing_sarcoma_SCPCS000492_Hallmark_results.tsv")
+```
+
+## Part A: Read in and prepare data
+
+### Prepare the gene set 
+
+Read in the marker genes table using the URL defined above to a variable called `marker_genes_df`.
+
+```{r read_in_marker_genes, solution = TRUE}
+marker_genes_df <- readr::read_tsv(marker_genes_url)
+```
+
+Let's take a look at what `marker_genes_df` contains.
+
+```{r display_marker_genes}
+marker_genes_df
+```
+
+You can use the information in the `source` column to review the publication a marker gene's inclusion is supported by.
+
+Now we need to get the gene set ready for use with `AUCell`. 
+You're going to save the gene set to a vector called `ensg_tumor_markers`.
+Here are some things to keep in mind when preparing the gene set:
+
+- You are only interested in the _tumor_ gene set
+- The `SingleCellExperiment` object uses Ensembl gene identifiers
+- You'll want to remove any duplicate genes in the gene set
+
+```{r format_marker_genes, solution = TRUE}
+# create a vector named `ensg_tumor_markers` with just the tumor gene set
+# Subset to tumor markers only
+## Method 1:
+tumor_markers_df <- marker_genes_df[marker_genes_df$cell_type == "tumor",]
+## Method 2:
+tumor_markers_df <- marker_genes_df |>
+  dplyr::filter(marker_genes_df$cell_type == "tumor")
+
+# Create a new df with only ENSG ids
+ensg_tumor_markers <- tumor_markers_df$ensembl_gene_id |>
+  # Remove duplicates if they exist
+  unique()
+
+ensg_tumor_markers # Looks like it dropped one duplicate
+```
+
+Next, convert the vector of Ensembl ids to a `GeneSet` object for use with `AUCell`:
+
+```{r GeneSet}
+ensg_tumor_markers <- GeneSet(ensg_tumor_markers,
+                              setName = "tumor_marker_genes",
+                              geneIdType = ENSEMBLIdentifier())
+```
+
+### Prepare the single-nuclei data
+
+Now that we have our gene set prepared, let's prepare the data.
+First, we will read in the `SingleCellExperiment` from the file we chose earlier.
+
+```{r read_in_sce}
+sce <- readr::read_rds(sce_file)
+```
+
+We will mostly be using the raw counts, so save the counts matrix to a separate variable.
+
+```{r counts_matrix, solution = TRUE}
+counts_matrix <- counts(sce)
+```
+
+## Part B: Run `AUCell` with tumor marker genes
+
+Calculate the gene rankings for individual cells.
+
+```{r cell_rankings, solution = TRUE}
+cell_rankings <- AUCell_buildRankings(counts_matrix)
+```
+
+Using the distribution of the number of genes detected in a cell, pick an appropriate AUC max rank and save it to `auc_max_rank`.
+Remember, you want most cells to be expressing at least the number of genes you pick as the AUC max rank so that non-detected genes won't affect the AUC values.
+
+```{r max_rank, solution = TRUE}
+# Setting 2 max ranks to inspect the effect of changing it
+auc_max_rank <- ceiling(nrow(cell_rankings) * 0.01)
+
+auc_max_rank_lower <- ceiling(nrow(cell_rankings) * 0.005)
+
+auc_max_rank_higher <- ceiling(nrow(cell_rankings) * 0.05)
+```
+
+Use the following to calculate the AUC values:
+
+- Tumor marker genes
+- Gene rankings for cells
+- AUC max rank
+
+Save the output to `cell_auc`.
+
+```{r calculate_marker_gene_auc, solution = TRUE}
+cell_auc <- AUCell_calcAUC(geneSets = ensg_tumor_markers,
+                           rankings = cell_rankings,
+                           aucMaxRank = auc_max_rank)
+
+cell_auc_lower <- AUCell_calcAUC(geneSets = ensg_tumor_markers,
+                           rankings = cell_rankings,
+                           aucMaxRank = auc_max_rank_lower)
+
+cell_auc_higher <- AUCell_calcAUC(geneSets = ensg_tumor_markers,
+                           rankings = cell_rankings,
+                           aucMaxRank = auc_max_rank_higher)
+```
+
+Automatically calculate a threshold for the AUC values using `AUCell_exploreThresholds()`.
+You'll want to set `assignCells = TRUE`, which tells `AUCell` to assign tumor cell labels to cells above the automatically chosen threshold.
+
+Save the output to `auc_assignments`.
+
+```{r thresholds_assignments, solution = TRUE}
+auc_assignments <- AUCell_exploreThresholds(cell_auc,
+                                            plotHist = FALSE,
+                                            assignCells = TRUE)
+
+auc_assignments_lower <- AUCell_exploreThresholds(cell_auc_lower,
+                                            plotHist = FALSE,
+                                            assignCells = TRUE)
+
+auc_assignments_higher <- AUCell_exploreThresholds(cell_auc_higher,
+                                            plotHist = FALSE,
+                                            assignCells = TRUE)
+
+```
+
+### Wrangle data for plotting
+
+We will create a data frame that holds the barcodes, AUC values, and a column called `tumor_cell` that indicates whether or not `AUCell` classified the cell as a tumor cell using the AUC values for the marker gene set.
+
+```{r auc_df}
+ format_auc_df <- function(cell_auc_object) { cell_auc_object@assays@data$AUC |> # start with the internal AUC table
+  # Transpose
+  t() |>
+  # Convert to data frame
+  as.data.frame() |>
+  # Make the barcodes a column
+  tibble::rownames_to_column("barcodes") |> 
+  # If the barcode is in the list of assigned barcodes, set the value in the
+  # column called tumor_cell to TRUE, and set it to FALSE otherwise
+  dplyr::mutate(
+    tumor_cell = barcodes %in% auc_assignments$tumor_marker_genes$assignment
+  )
+}
+
+# Call function
+auc_df <- format_auc_df(cell_auc)
+auc_df_lower <- format_auc_df(cell_auc_lower)
+auc_df_higher <- format_auc_df(cell_auc_higher)
+```
+
+
+We will extract the automatically selected threshold from `auc_assignments` to use in our density plot.
+
+```{r threshold_to_plot}
+auc_threshold <- auc_assignments[[1]]$aucThr$selected
+
+# Grab higher and lower as well
+auc_threshold_lower <- auc_assignments_lower[[1]]$aucThr$selected
+auc_threshold_higher <- auc_assignments_higher[[1]]$aucThr$selected
+
+print("Automatic threshold values for different AUC max ranks:")
+print(glue::glue("Max Rank of 0.01: {round(auc_threshold, 3)}
+                 Max Rank of 0.005: {round(auc_threshold_lower, 3)}
+                 Max Rank of 0.05: {round(auc_threshold_higher, 3)}"))
+
+```
+```{r}
+# Let's throw these into a df
+auc_threshold_df <- data.frame(
+  row.names = c("average", "lower","higher"),
+  auc_max_rank = c("1%", "0.5%","5%"),
+  # Grab thresholds associated with each gene set from assignements object
+  threshold = c(auc_assignments[[1]]$aucThr$selected, 
+                auc_assignments_lower[[1]]$aucThr$selected,
+                auc_assignments_higher[[1]]$aucThr$selected)
+)
+```
+
+```{r}
+# We also need to merge our results from each run, changing the colnames to specify which run
+auc_df_combined <- auc_df_higher |>
+  dplyr::left_join(auc_df_lower, by = "barcodes", suffix = c("_0.5", "_0.05")) |>
+  dplyr::left_join(auc_df[,1:3], by = "barcodes", suffix = c("", "_0.1"))
+```
+
+Using `ggplot2`, make a density plot that distinguishes AUC values between cells that were assigned as tumor cells and those that were not.
+Add a vertical line representing the threshold that was automatically selected and applied.
+
+```{r density_plot, solution = TRUE}
+auc_df |>
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = tumor_marker_genes,
+      color = tumor_cell,
+      fill = tumor_cell,
+    )
+  ) +
+  ggplot2::geom_density(alpha = 0.2) +
+  # Draw a vertical dotted line showing the threshold
+  ggplot2::geom_vline(data = auc_threshold_df,
+                      mapping = ggplot2::aes(xintercept = threshold),
+                      lty = 2) +
+  # Plot each AUC max rank on its own
+  ggplot2::facet_grid(cols = ggplot2::vars(auc_max_rank)) +
+  # Use a built-in theme
+  ggplot2::theme_bw()
+
+```
+
+## Part C: Run `AUCell` with an MSigDB collection
+
+Now, let's run `AUCell` using a collection from the Molecular Signatures Database (MSigDB).
+
+We can use the results to explore if there are gene sets that have different expression in tumor cells vs. other cells in the sample, using the labels from `AUCell`.
+
+Let's look at what collections are available as part of the `msigdbr` package:
+
+```{r show_collections}
+msigdbr_collections()
+```
+
+It may be helpful to cross-reference this with the MSigDB website: <https://www.gsea-msigdb.org/gsea/msigdb/human/collections.jsp>
+
+Pick a category or subcategory that is biologically relevant to Ewing sarcoma, and extract it for use with AUC via `msigdbr()` and save it to a data frame called `collection_df`.
+
+The _solved version_ of this notebook is going to use the Hallmarks gene set (`"H"`), but feel free to pick whatever interests you!
+Just keep in mind that the more gene sets in the collection, the longer `AUCell` will take to run.
+
+```{r collection_df, solution = TRUE}
+collection_df <- msigdbr(species = "Homo sapiens", category = "H")
+
+head(collection_df)
+```
+
+Turn the data frame into a `GeneSetCollection` for use with `AUCell`.
+
+```{r gene_set_collection}
+collection_list <- unique(collection_df$gs_name) |>
+  purrr::map(
+    # For each gene set
+    \(gene_set_name) {
+      collection_df |>
+        # Subset to the rows in that gene set
+        dplyr::filter(gs_name == gene_set_name) |>
+        # Grab the Ensembl gene identifiers
+        dplyr::pull(ensembl_gene) |>
+        # Create a GeneSet object
+        GeneSet(setName = gene_set_name,
+                geneIdType = ENSEMBLIdentifier())
+    }
+  ) |>
+  # Turn the list of GeneSet objects into a GeneSet collection
+  GeneSetCollection()
+```
+
+`AUCell` provides a wrapper function that runs the ranking and AUC calculation steps called `AUCell_run()`.
+Because we're using the same sample as we did with the tumor marker genes, we can use the same AUC max rank value we used earlier (`auc_max_rank`).
+
+You may need to change the names of the variables passed to the `exprsMat` and `aucMaxRank` arguments below depending on what you used earlier!
+
+```{r collection_auc}
+# Change the variable names as needed
+collection_cell_auc <- AUCell_run(exprMat = counts_matrix,
+                                  geneSets = collection_list,
+                                  aucMaxRank = auc_max_rank)
+```
+
+Create a data frame that contains the AUC values for all gene sets, where the first column is called `barcodes` and contains the cell barcodes.
+Call it `collection_auc_df`.
+
+```{r collection_auc_df, solution = TRUE}
+collection_auc_df <- collection_cell_auc@assays@data$AUC |>
+  # Transpose
+  t() |>
+  # Convert to data frame
+  as.data.frame() |>
+  # Make the barcodes a column
+  tibble::rownames_to_column("barcodes")
+  
+collection_auc_df
+```
+
+```{r}
+auc_df
+```
+
+Join the data frame that contains the tumor marker gene AUC values and assignments to the data frame that contains the AUC values for the gene sets in the MSigDB collection.
+
+```{r join_auc}
+auc_df <- auc_df |>
+  dplyr::inner_join(
+    collection_auc_df,
+    by = "barcodes"
+  )
+```
+
+Write this data frame to the output file you saved as a variable earlier.
+
+```{r save_output, solution = TRUE}
+readr::write_tsv(auc_df, auc_output_file)
+```
+
+## Part D: Visualize the results
+
+### Plot UMAPs
+
+We can use the data in `auc_df` to make UMAP visualizations once we add it to the `SingleCellExperiment` object.
+
+#### Add AUC values to `colData`
+
+To prepare for use with `scater::plotUMAP`, let's add the `auc_df` to the `colData` of the `SingleCellExperiment` object.
+Don't forget to provide the `row.names` argument when converting back to a `DataFrame`.
+
+```{r add_to_col_data, solution = TRUE}
+# Extract colData and join with AUC data frame
+coldata_df <- colData(sce) |>
+  as.data.frame() |>
+  dplyr::left_join(auc_df, by = "barcodes")
+
+# Add a DataFrame back to colData
+colData(sce) <- DataFrame(
+  coldata_df,
+  row.names = colData(sce)$barcodes
+)
+```
+
+#### Plot tumor cell assignments (UMAP)
+
+First, plot a UMAP, coloring cells by whether or not they are a tumor cell according to `AUCell`.
+
+```{r plot_tumor_cell, solution = TRUE}
+scater::plotUMAP(
+  sce,
+  color_by = "tumor_cell",
+)
+```
+
+What do you think of these results?
+
+#### Plot AUC values for a gene set (UMAP)
+
+Now, let's try plotting a UMAP with the cells colored by AUC value for a particular gene set and use shape to indicate whether or not a cell is classified as a tumor cell.
+
+To figure out how to accomplish this, review the documentation for `plotReducedDim()`, which is the function underlying `plotUMAP()`.
+
+```{r plot_umap_help}
+?scater::plotReducedDim
+```
+
+First, save the pathway you'll be plotting the AUC values of to a variable called `pathway_to_plot`.
+The _solved version_ will use `"HALLMARK_TGF_BETA_SIGNALING"`.
+
+```{r pathway_to_plot, solution = TRUE}
+pathway_to_plot <- "HALLMARK_MYC_TARGETS_V1"
+```
+
+Now make your UMAP!
+
+```{r plot_auc_umap, solution = TRUE}
+scater::plotReducedDim(
+  sce,
+  dimred = "UMAP",
+  color_by = pathway_to_plot,
+  shape = "tumor_cell"
+) +
+  ggplot2::ggtitle(stringr::str_replace_all(pathway_to_plot, 
+                                            "\\_", 
+                                            " "))  
+```
+
+Sometimes using shape alone can make it difficult to see, so we can also facet based on `tumor_cell`:
+
+```{r shape_and_facet}
+scater::plotUMAP(sce,
+                 shape_by = "tumor_cell",
+                 colour_by = pathway_to_plot, 
+                 other_fields = "tumor_cell") + 
+  ggplot2::facet_wrap(ggplot2::vars(tumor_cell), ncol = 1) +
+  ggplot2::coord_fixed()  # Keep the plots square
+```
+
+What is your interpretation of this plot?
+
+### Plot AUC distribution tumor vs. non-tumor cells
+
+If we want to focus solely on the difference in AUC values between tumor vs. other cells in the sample, we may not necessarily need a UMAP for that.
+
+We can use a density plot similar to the one we created to explore the AUC threshold for assigning cells using the tumor gene set.
+All the data we need is already in `auc_df`!
+
+In this plot, we still want the color and fill to be based on tumor cell assignment, but we want a specific pathway's AUC values on the x-axis.
+The _solved version_ will continue to use `"HALLMARK_TGF_BETA_SIGNALING"`.
+
+Use the next chunk to make a new density plot comparing AUC values between tumor and other cells for one gene set.
+
+```{r density, solution = TRUE}
+auc_df |>
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = HALLMARK_MYC_TARGETS_V1,
+      color = tumor_cell,
+      fill = tumor_cell,
+    )
+  ) +
+  ggplot2::geom_density(alpha = 0.2) +
+  # Draw a vertical dotted line showing the threshold
+  ggplot2::geom_vline(data = auc_threshold_df,
+                      mapping = ggplot2::aes(xintercept = threshold),
+                      lty = 2) +
+  # Use a built-in theme
+  ggplot2::theme_bw()
+
+```
+
+Is your interpretation of this plot similar to the UMAP, or is this different from your expectations?
+Why or why not?
+
+## Session Info
+
+```{r sessionInfo}
+sessionInfo()
+```

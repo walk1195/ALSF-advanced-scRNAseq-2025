@@ -1,0 +1,27 @@
+{
+    "id": "02DFA215",
+    "path": "~/training-modules/scRNA-seq-advanced/exercise_04-scrna_pathway.Rmd",
+    "project_path": "exercise_04-scrna_pathway.Rmd",
+    "type": "r_markdown",
+    "hash": "553285781",
+    "contents": "",
+    "dirty": false,
+    "created": 1765480868136.0,
+    "source_on_save": false,
+    "relative_order": 2,
+    "properties": {
+        "chunk_output_type": "inline",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "538,0",
+        "scrollLine": "533"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1765493153,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1765493153181,
+    "read_only": false,
+    "read_only_alternatives": []
+}

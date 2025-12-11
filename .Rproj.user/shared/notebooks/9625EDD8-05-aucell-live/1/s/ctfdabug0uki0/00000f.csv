@@ -1,0 +1,3 @@
+"0","sce_file <- fs::path(processed_dir, "
+"0","                     ""SCPCS000490"", "
+"0","                     ""SCPCL000822_processed.rds"")"

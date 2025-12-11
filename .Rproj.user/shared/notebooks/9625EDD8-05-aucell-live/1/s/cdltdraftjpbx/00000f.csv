@@ -1,0 +1,3 @@
+"0","# Remove genes from gene sets if they are not in the SCE"
+"0","ewing_gene_set_collection <- subsetGeneSets(ewing_gene_set_collection,"
+"0","                                            rownames(counts_matrix))"

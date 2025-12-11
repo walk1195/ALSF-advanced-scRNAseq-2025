@@ -1,0 +1,8 @@
+"0","# Create a new df with only ENSG ids
+ensg_tumor_markers <- tumor_markers_df$ensembl_gene_id |>
+  # Remove duplicates if they exist
+  dplyr::distinct()
+"
+"2","Error in UseMethod(""distinct"") : 
+  no applicable method for 'distinct' applied to an object of class ""character""
+"

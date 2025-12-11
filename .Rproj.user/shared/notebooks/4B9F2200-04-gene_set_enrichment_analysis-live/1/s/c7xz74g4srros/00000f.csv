@@ -1,0 +1,4 @@
+"0","lfc_vector <- deseq_df |>"
+"0","  # Extract a vector of `log2FoldChange` named by `ensembl_id`"
+"0","  dplyr::pull(log2FoldChange, name = ensembl_id)"
+"0","lfc_vector <- sort(lfc_vector, decreasing = TRUE)"

@@ -1,0 +1,4 @@
+"0","counts_matrix <- sce@assays$counts
+"
+"2","Error in sce@assays$counts : $ operator not defined for this S4 class
+"

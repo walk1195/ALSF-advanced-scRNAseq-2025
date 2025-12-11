@@ -1,0 +1,5 @@
+"0","plot_recovery_curve(cell_rankings,"
+"0","                    ewing_gene_set_collection,"
+"0","                    gene_set_name = ""ZHANG_TARGETS_OF_EWSR1_FLI1_FUSION"","
+"0","                    barcode = ""AGATAGAGTCACAATC"","
+"0","                    auc_max_rank = auc_max_rank)  # 1% threshold"

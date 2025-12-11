@@ -1,0 +1,8 @@
+"0","gsea_results <- GSEA(geneList = lfc_vector,  # ordered ranked gene list"
+"0","                     minGSSize = 25,  # minimum gene set size"
+"0","                     maxGSSize = 500,  # maximum gene set set"
+"0","                     pvalueCutoff = 0.05,"
+"0","                     pAdjustMethod = ""BH"",  # correction for multiple hypothesis testing"
+"0","                     TERM2GENE = dplyr::select(hs_hallmarks_df,"
+"0","                                               gs_name,"
+"0","                                               ensembl_gene))  # pass the correct identifier column"

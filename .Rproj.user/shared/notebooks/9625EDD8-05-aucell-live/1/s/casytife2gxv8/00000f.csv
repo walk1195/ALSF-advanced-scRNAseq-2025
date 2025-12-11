@@ -1,0 +1,2 @@
+"0","# Extract counts matrix"
+"0","counts_matrix <- counts(sce)"

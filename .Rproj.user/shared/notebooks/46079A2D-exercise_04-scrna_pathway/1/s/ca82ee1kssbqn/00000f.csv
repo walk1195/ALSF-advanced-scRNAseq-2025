@@ -1,0 +1,6 @@
+"0","scater::plotUMAP(sce,"
+"0","                 shape_by = ""tumor_cell"","
+"0","                 colour_by = pathway_to_plot, "
+"0","                 other_fields = ""tumor_cell"") + "
+"0","  ggplot2::facet_wrap(ggplot2::vars(tumor_cell), ncol = 1) +"
+"0","  ggplot2::coord_fixed()  # Keep the plots square"

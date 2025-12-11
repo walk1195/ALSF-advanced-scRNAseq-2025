@@ -1,0 +1,4 @@
+"0","# We also need to merge our results from each run, changing the colnames to specify which run"
+"0","auc_df_combined <- auc_df_higher |>"
+"0","  dplyr::left_join(auc_df_lower, by = ""barcodes"", suffix = c(""_0.5"", ""_0.05"")) |>"
+"0","  dplyr::left_join(auc_df[,1:3], by = ""barcodes"", suffix = c(""test"", ""_0.1""))"

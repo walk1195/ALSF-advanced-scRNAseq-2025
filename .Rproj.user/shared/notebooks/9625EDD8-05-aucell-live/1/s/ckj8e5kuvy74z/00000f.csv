@@ -1,0 +1,3 @@
+"0","cell_auc <- AUCell_calcAUC(geneSets = ewing_gene_set_collection,"
+"0","                           rankings = cell_rankings,"
+"0","                           aucMaxRank = auc_max_rank)"

@@ -1,0 +1,4 @@
+"0","ewing_gene_sets_df <- msigdbr(species = ""Homo sapiens"","
+"0","                              category = ""C2"","
+"0","                              subcategory = ""CGP"") |>"
+"0","  dplyr::filter(gs_name %in% ewing_gene_set_names)"

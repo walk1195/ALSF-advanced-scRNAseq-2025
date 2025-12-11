@@ -1,0 +1,28 @@
+{
+    "id": "5E43D125",
+    "path": "~/training-modules/scRNA-seq-advanced/05-aucell-live.Rmd",
+    "project_path": "05-aucell-live.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1765478877597.0,
+    "source_on_save": false,
+    "relative_order": 5,
+    "properties": {
+        "chunk_output_type": "inline",
+        "source_window_id": "",
+        "Source": "Source",
+        "last_setup_crc32": "8327b296c1116231",
+        "cursorPosition": "433,0",
+        "scrollLine": "425"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1765480852,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1765480852804,
+    "read_only": false,
+    "read_only_alternatives": []
+}

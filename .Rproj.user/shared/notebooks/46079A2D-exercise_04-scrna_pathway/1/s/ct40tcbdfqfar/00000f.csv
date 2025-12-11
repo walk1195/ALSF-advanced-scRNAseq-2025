@@ -1,0 +1,4 @@
+"0","# Change the variable names as needed"
+"0","collection_cell_auc <- AUCell_run(exprMat = counts_matrix,"
+"0","                                  geneSets = collection_list,"
+"0","                                  aucMaxRank = auc_max_rank)"

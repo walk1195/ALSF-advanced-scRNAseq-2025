@@ -1,0 +1,1 @@
+{"frames":[{"func":"dplyr::distinct(tumor_markers_df$ensembl_gene_id)","file":"","line_number":0,"end_line_number":0,"character_number":0,"end_character_number":0}],"message":"Error in UseMethod(\"distinct\") : \n  no applicable method for 'distinct' applied to an object of class \"character\"\n"}

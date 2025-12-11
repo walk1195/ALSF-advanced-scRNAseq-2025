@@ -1,0 +1,27 @@
+{
+    "id": "226909AF",
+    "path": "~/training-modules/scRNA-seq-advanced/exercise_05-cluster_evaluation.Rmd",
+    "project_path": "exercise_05-cluster_evaluation.Rmd",
+    "type": "r_markdown",
+    "hash": "0",
+    "contents": "",
+    "dirty": false,
+    "created": 1765481543131.0,
+    "source_on_save": false,
+    "relative_order": 4,
+    "properties": {
+        "chunk_output_type": "inline",
+        "source_window_id": "",
+        "Source": "Source",
+        "cursorPosition": "336,63",
+        "scrollLine": "326"
+    },
+    "folds": "",
+    "lastKnownWriteTime": 1764704394,
+    "encoding": "UTF-8",
+    "collab_server": "",
+    "source_window": "",
+    "last_content_update": 1764704394,
+    "read_only": false,
+    "read_only_alternatives": []
+}

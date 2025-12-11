@@ -1,0 +1,7 @@
+"0","# We'll use the differential expression results as GSEA input"
+"0","rms_analysis_dir <- file.path(""analysis"", ""rms"")"
+"0",""
+"0","# We'll create a directory to specifically hold the pathway results if it doesn't"
+"0","# exist yet"
+"0","results_dir <- file.path(rms_analysis_dir, ""pathway-analysis"")"
+"0","fs::dir_create(results_dir)"
