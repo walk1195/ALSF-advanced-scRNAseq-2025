@@ -1,4 +1,4 @@
-# Advanced scRNA-seq Training Module
+# ALSF Advanced scRNA-seq Training Module (Dec 2025)
 
 This Childhood Cancer Data Lab-designed module covers more advanced topics in the analysis of single-cell RNA-seq data.
 
@@ -23,3 +23,5 @@ Additional exercise notebooks:
 - [Differential expression analysis](https://github.com/AlexsLemonade/training-modules/blob/master/scRNA-seq-advanced/exercise_03-diffexp.Rmd)
 - [Pathway analysis](https://github.com/AlexsLemonade/training-modules/blob/master/scRNA-seq-advanced/exercise_04-scrna_pathway.Rmd)
 - [Evaluating clusters](https://github.com/AlexsLemonade/training-modules/blob/master/scRNA-seq-advanced/exercise_05-cluster_evaluation.Rmd)
+=======
+
