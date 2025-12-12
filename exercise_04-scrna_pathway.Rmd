@@ -303,6 +303,65 @@ auc_df_combined <- auc_df_higher |>
 Using `ggplot2`, make a density plot that distinguishes AUC values between cells that were assigned as tumor cells and those that were not.
 Add a vertical line representing the threshold that was automatically selected and applied.
 
+
+```{r}
+auc_df |>
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = tumor_marker_genes,
+      color = tumor_cell,
+      fill = tumor_cell,
+    )
+  ) +
+  ggplot2::geom_density(alpha = 0.2) +
+  # Draw a vertical dotted line showing the threshold
+  ggplot2::geom_vline(data = auc_threshold_df,
+                      mapping = ggplot2::aes(xintercept = threshold[1]),
+                      lty = 2) +
+  # Use a built-in theme
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("AUC Tumor Cell Assignment, Max Rank Threshold = 1%")
+```
+
+```{r}
+auc_df_higher |>
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = tumor_marker_genes,
+      color = tumor_cell,
+      fill = tumor_cell,
+    )
+  ) +
+  ggplot2::geom_density(alpha = 0.2) +
+  # Draw a vertical dotted line showing the threshold
+  ggplot2::geom_vline(data = auc_threshold_df,
+                      mapping = ggplot2::aes(xintercept = threshold[3]),
+                      lty = 2) +
+  # Use a built-in theme
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("AUC Tumor Cell Assignment, Max Rank Threshold = 5%")
+```
+
+```{r}
+auc_df_lower |>
+  ggplot2::ggplot(
+    ggplot2::aes(
+      x = tumor_marker_genes,
+      color = tumor_cell,
+      fill = tumor_cell,
+    )
+  ) +
+  ggplot2::geom_density(alpha = 0.2) +
+  # Draw a vertical dotted line showing the threshold
+  ggplot2::geom_vline(data = auc_threshold_df,
+                      mapping = ggplot2::aes(xintercept = threshold[2]),
+                      lty = 2) +
+  # Use a built-in theme
+  ggplot2::theme_bw() +
+  ggplot2::ggtitle("AUC Tumor Cell Assignment, Max Rank Threshold = 0.5%")
+
+```
+
 ```{r density_plot, solution = TRUE}
 auc_df |>
   ggplot2::ggplot(

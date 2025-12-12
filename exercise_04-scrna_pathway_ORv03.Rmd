@@ -23,21 +23,6 @@ In this notebook, you will:
 - Part C: Run `AUCell` with an MSigDB collection
 - Part D: Visualize the results
 
-There are multiple Ewing sarcoma samples you can choose for your analysis, available in the following directory:
-
-```
-data/ewing-sarcoma/processed
-```
-
-The _solved version_ of this notebook will use the same sample that we used during instruction: `data/ewing-sarcoma/processed/SCPCS000490/SCPCL000822_processed.rds`
-But we encourage you to pick any sample you are interested in, perhaps by browsing the metadata located at: `data/ewing-sarcoma/annotations/ewing_sarcoma_sample_metadata.tsv`
-
-```{r}
-ewing_metadata <- readr::read_tsv('data/ewing-sarcoma/annotations/ewing_sarcoma_sample_metadata.tsv')
-
-View(ewing_metadata) # Choosing sample SCPCS000492 (library ID SCPCL000824)
-```
-
 ## Setup
 
 ### Libraries
@@ -72,14 +57,15 @@ Set up the directories to read in a Ewing sarcoma `SingleCellExperiment` and out
 
 ```{r set_up_directories, solution = TRUE}
 # Input data 
-ewing_data_dir <- file.path("data", "ewing-sarcoma")
-processed_dir <- file.path(ewing_data_dir, "processed")
+levi_data_dir <- file.path("~", "Modiano-data")
+processed_dir <- file.path(levi_data_dir, "processed")
 
 # Directory for holding pathway analysis results
-analysis_dir <- file.path("analysis", "ewing_sarcoma", "pathway-analysis")
+analysis_dir <- file.path("analysis", "Modiano-data", "aucell")
 
 # Create if it doesn't exist yet
 fs::dir_create(analysis_dir)
+fs::dir_create(processed_dir)
 ```
 
 #### Files
@@ -99,17 +85,15 @@ marker_genes_url <- "https://raw.githubusercontent.com/AlexsLemonade/OpenScPCA-a
 Choose a Ewing sarcoma sample you'd like to read in and save the path to that file as a variable called `sce_file`.
 
 ```{r sce_file, solution = TRUE}
-sce_file <- file.path(processed_dir,
-                           "SCPCS000492",
-                           "SCPCL000824_processed.rds")
-
+sce_file <- file.path(levi_data_dir,
+                      "ORv03_sce.rds")
 ```
 
 Save the path to the output file (give it a descriptive name!) to a variable.
 You may want to come back to this filename after you've chosen a collection from MSigDB.
 
 ```{r output_file, solution = TRUE}
-auc_output_file <- fs::path(analysis_dir, "ewing_sarcoma_SCPCS000492_Hallmark_results.tsv")
+auc_output_file <- fs::path(analysis_dir, "ORv03_AUCell_C7_VAX_results.tsv")
 ```
 
 ## Part A: Read in and prepare data
@@ -147,8 +131,8 @@ tumor_markers_df <- marker_genes_df[marker_genes_df$cell_type == "tumor",]
 tumor_markers_df <- marker_genes_df |>
   dplyr::filter(marker_genes_df$cell_type == "tumor")
 
-# Create a new df with only ENSG ids
-ensg_tumor_markers <- tumor_markers_df$ensembl_gene_id |>
+# Create a vector
+ensg_tumor_markers <- tumor_markers_df$gene_symbol |>
   # Remove duplicates if they exist
   unique()
 
@@ -160,7 +144,7 @@ Next, convert the vector of Ensembl ids to a `GeneSet` object for use with `AUCe
 ```{r GeneSet}
 ensg_tumor_markers <- GeneSet(ensg_tumor_markers,
                               setName = "tumor_marker_genes",
-                              geneIdType = ENSEMBLIdentifier())
+                              geneIdType = SymbolIdentifier())
 ```
 
 ### Prepare the single-nuclei data
@@ -172,10 +156,24 @@ First, we will read in the `SingleCellExperiment` from the file we chose earlier
 sce <- readr::read_rds(sce_file)
 ```
 
+
+GEW: Let's do some quick clean up
+```{r cell_rankings, solution = TRUE}
+# Remove empty droplets
+barcode_counts <- colSums(counts(sce)) # sum columns from counts matrix
+sce_filtered <- sce[, which(barcode_counts > 0)] # filter SCE object to only rows with counts > 0
+
+# Filter out cells expressing < 200 genes
+genes_per_cell <- colSums(counts(sce) > 0)
+
+# Keep cells with at least 200 genes
+sce_filtered <- sce_filtered[, which(genes_per_cell >= 200)]
+sce_filtered
+```
 We will mostly be using the raw counts, so save the counts matrix to a separate variable.
 
 ```{r counts_matrix, solution = TRUE}
-counts_matrix <- counts(sce)
+counts_matrix <- counts(sce_filtered)
 ```
 
 ## Part B: Run `AUCell` with tumor marker genes
@@ -191,11 +189,8 @@ Remember, you want most cells to be expressing at least the number of genes you 
 
 ```{r max_rank, solution = TRUE}
 # Setting 2 max ranks to inspect the effect of changing it
-auc_max_rank <- ceiling(nrow(cell_rankings) * 0.01)
+auc_max_rank <- ceiling(nrow(cell_rankings) * 0.02) # 403
 
-auc_max_rank_lower <- ceiling(nrow(cell_rankings) * 0.005)
-
-auc_max_rank_higher <- ceiling(nrow(cell_rankings) * 0.05)
 ```
 
 Use the following to calculate the AUC values:
@@ -210,14 +205,6 @@ Save the output to `cell_auc`.
 cell_auc <- AUCell_calcAUC(geneSets = ensg_tumor_markers,
                            rankings = cell_rankings,
                            aucMaxRank = auc_max_rank)
-
-cell_auc_lower <- AUCell_calcAUC(geneSets = ensg_tumor_markers,
-                           rankings = cell_rankings,
-                           aucMaxRank = auc_max_rank_lower)
-
-cell_auc_higher <- AUCell_calcAUC(geneSets = ensg_tumor_markers,
-                           rankings = cell_rankings,
-                           aucMaxRank = auc_max_rank_higher)
 ```
 
 Automatically calculate a threshold for the AUC values using `AUCell_exploreThresholds()`.
@@ -227,14 +214,6 @@ Save the output to `auc_assignments`.
 
 ```{r thresholds_assignments, solution = TRUE}
 auc_assignments <- AUCell_exploreThresholds(cell_auc,
-                                            plotHist = FALSE,
-                                            assignCells = TRUE)
-
-auc_assignments_lower <- AUCell_exploreThresholds(cell_auc_lower,
-                                            plotHist = FALSE,
-                                            assignCells = TRUE)
-
-auc_assignments_higher <- AUCell_exploreThresholds(cell_auc_higher,
                                             plotHist = FALSE,
                                             assignCells = TRUE)
 
@@ -261,8 +240,6 @@ We will create a data frame that holds the barcodes, AUC values, and a column ca
 
 # Call function
 auc_df <- format_auc_df(cell_auc)
-auc_df_lower <- format_auc_df(cell_auc_lower)
-auc_df_higher <- format_auc_df(cell_auc_higher)
 ```
 
 
@@ -271,39 +248,15 @@ We will extract the automatically selected threshold from `auc_assignments` to u
 ```{r threshold_to_plot}
 auc_threshold <- auc_assignments[[1]]$aucThr$selected
 
-# Grab higher and lower as well
-auc_threshold_lower <- auc_assignments_lower[[1]]$aucThr$selected
-auc_threshold_higher <- auc_assignments_higher[[1]]$aucThr$selected
-
-print("Automatic threshold values for different AUC max ranks:")
-print(glue::glue("Max Rank of 0.01: {round(auc_threshold, 3)}
-                 Max Rank of 0.005: {round(auc_threshold_lower, 3)}
-                 Max Rank of 0.05: {round(auc_threshold_higher, 3)}"))
-
-```
-```{r}
-# Let's throw these into a df
-auc_threshold_df <- data.frame(
-  row.names = c("average", "lower","higher"),
-  auc_max_rank = c("1%", "0.5%","5%"),
-  # Grab thresholds associated with each gene set from assignements object
-  threshold = c(auc_assignments[[1]]$aucThr$selected, 
-                auc_assignments_lower[[1]]$aucThr$selected,
-                auc_assignments_higher[[1]]$aucThr$selected)
-)
 ```
 
-```{r}
-# We also need to merge our results from each run, changing the colnames to specify which run
-auc_df_combined <- auc_df_higher |>
-  dplyr::left_join(auc_df_lower, by = "barcodes", suffix = c("_0.5", "_0.05")) |>
-  dplyr::left_join(auc_df[,1:3], by = "barcodes", suffix = c("", "_0.1"))
-```
+
 
 Using `ggplot2`, make a density plot that distinguishes AUC values between cells that were assigned as tumor cells and those that were not.
 Add a vertical line representing the threshold that was automatically selected and applied.
 
-```{r density_plot, solution = TRUE}
+
+```{r}
 auc_df |>
   ggplot2::ggplot(
     ggplot2::aes(
@@ -314,15 +267,14 @@ auc_df |>
   ) +
   ggplot2::geom_density(alpha = 0.2) +
   # Draw a vertical dotted line showing the threshold
-  ggplot2::geom_vline(data = auc_threshold_df,
-                      mapping = ggplot2::aes(xintercept = threshold),
-                      lty = 2) +
-  # Plot each AUC max rank on its own
-  ggplot2::facet_grid(cols = ggplot2::vars(auc_max_rank)) +
+#  ggplot2::geom_vline(data = auc_threshold_df,
+ #                     mapping = ggplot2::aes(xintercept = auc_threshold),
+ #                     lty = 2) +
   # Use a built-in theme
   ggplot2::theme_bw()
-
 ```
+
+
 
 ## Part C: Run `AUCell` with an MSigDB collection
 
@@ -344,8 +296,9 @@ The _solved version_ of this notebook is going to use the Hallmarks gene set (`"
 Just keep in mind that the more gene sets in the collection, the longer `AUCell` will take to run.
 
 ```{r collection_df, solution = TRUE}
-collection_df <- msigdbr(species = "Homo sapiens", category = "H")
+collection_df <- msigdbr(species = "Homo sapiens", category = "C7", subcategory = "VAX")
 
+#collection_df <- collection_df[which(collection_df$gs_subcat == 'VAX'),]
 head(collection_df)
 ```
 
@@ -359,11 +312,12 @@ collection_list <- unique(collection_df$gs_name) |>
       collection_df |>
         # Subset to the rows in that gene set
         dplyr::filter(gs_name == gene_set_name) |>
-        # Grab the Ensembl gene identifiers
-        dplyr::pull(ensembl_gene) |>
+        # Grab the gene symbol identifiers
+        dplyr::pull(gene_symbol) |>
+        unique() |> # fixing error about duplicates
         # Create a GeneSet object
         GeneSet(setName = gene_set_name,
-                geneIdType = ENSEMBLIdentifier())
+                geneIdType = SymbolIdentifier())
     }
   ) |>
   # Turn the list of GeneSet objects into a GeneSet collection
@@ -397,9 +351,6 @@ collection_auc_df <- collection_cell_auc@assays@data$AUC |>
 collection_auc_df
 ```
 
-```{r}
-auc_df
-```
 
 Join the data frame that contains the tumor marker gene AUC values and assignments to the data frame that contains the AUC values for the gene sets in the MSigDB collection.
 
@@ -424,20 +375,37 @@ readr::write_tsv(auc_df, auc_output_file)
 We can use the data in `auc_df` to make UMAP visualizations once we add it to the `SingleCellExperiment` object.
 
 #### Add AUC values to `colData`
+```{r}
+# Grab some pathways of interest
+pathways_to_plot <- c("barcodes", "tumor_marker_genes", "tumor_cell",
+                      "ANDERSON_BLOOD_CN54GP140_ADJUVANTED_WITH_GLA_AF_AGE_18_45YO_7DY_UP",
+                      "BUCASAS_PBMC_FLUARIX_FLUVIRIN_CAUCASIAN_MALE_AGE_18_40YO_HIGH_RESPONDERS_1DY_TOP_FUNCTIONAL_NETWORK_POSITIVE",
+                      "FRANCO_BLOOD_SANOFI_PASTEUR_SA_INACTIVATED_INFLUENZA_VACCINE_CORRELATED_WITH_ANTIBODY_RESPONSE_AGE_18_40YO_0DY_POSITIVE",
+                      "HOEK_T_CELL_2011_2012_TIV_ADULT_3DY_UP",
+                      "HOEK_B_CELL_2011_2012_TIV_ADULT_7DY_UP",
+                      "HOFT_CD4_POSITIVE_ALPHA_BETA_MEMORY_T_CELL_BCG_VACCINE_AGE_18_45YO_56D_TOP_100_DEG_AFTER_IN_VITRO_RE_STIMULATION_UP")
+```
+
+```{r}
+# Subset df
+auc_df_selected <- auc_df[,colnames(auc_df) %in% pathways_to_plot]
+```
 
 To prepare for use with `scater::plotUMAP`, let's add the `auc_df` to the `colData` of the `SingleCellExperiment` object.
 Don't forget to provide the `row.names` argument when converting back to a `DataFrame`.
 
 ```{r add_to_col_data, solution = TRUE}
+colData(sce_filtered)$barcodes <- auc_df_selected$barcode
+
 # Extract colData and join with AUC data frame
-coldata_df <- colData(sce) |>
+coldata_df <- colData(sce_filtered) |>
   as.data.frame() |>
-  dplyr::left_join(auc_df, by = "barcodes")
+  dplyr::left_join(auc_df_selected, by = "barcodes")
 
 # Add a DataFrame back to colData
-colData(sce) <- DataFrame(
+colData(sce_filtered) <- DataFrame(
   coldata_df,
-  row.names = colData(sce)$barcodes
+  row.names = colData(sce_filtered)$barcodes
 )
 ```
 
@@ -445,10 +413,54 @@ colData(sce) <- DataFrame(
 
 First, plot a UMAP, coloring cells by whether or not they are a tumor cell according to `AUCell`.
 
+```{r}
+### Run through a quick processing
+
+# Perform rough clustering
+qclust <- scran::quickCluster(sce_filtered)
+  
+# use clusters to compute scaling factors and add to SCE object
+sce_filtered <- scran::computeSumFactors(
+  sce_filtered,
+  clusters = qclust
+)
+
+# perform normalization using scaling factors
+# and save as a new SCE object
+normalized_sce <- scuttle::logNormCounts(sce_filtered)
+# identify 2000 genes
+num_genes <- 2000
+
+# model variance, partitioning into biological and technical variation
+gene_variance <- scran::modelGeneVar(normalized_sce)
+
+# get the most variable genes
+hv_genes <- scran::getTopHVGs(
+  gene_variance,
+  n = num_genes
+)
+
+# PCA
+normalized_sce <- scater::runPCA(
+  normalized_sce,
+  subset_row = hv_genes,
+  ncomponents = 50
+)
+
+# UMAP
+normalized_sce <- scater::runUMAP(
+  normalized_sce,
+  dimred = "PCA"
+)
+
+```
+
 ```{r plot_tumor_cell, solution = TRUE}
 scater::plotUMAP(
-  sce,
+  normalized_sce,
   color_by = "tumor_cell",
+  point_size = 0.5,
+  point_alpha = 0.2
 )
 ```
 
@@ -468,21 +480,28 @@ First, save the pathway you'll be plotting the AUC values of to a variable calle
 The _solved version_ will use `"HALLMARK_TGF_BETA_SIGNALING"`.
 
 ```{r pathway_to_plot, solution = TRUE}
-pathway_to_plot <- "HALLMARK_MYC_TARGETS_V1"
+pathways_to_plot
 ```
 
 Now make your UMAP!
 
 ```{r plot_auc_umap, solution = TRUE}
-scater::plotReducedDim(
-  sce,
+pathway_to_plot <- "HOEK_B_CELL_2011_2012_TIV_ADULT_7DY_UP"
+
+umap <- scater::plotReducedDim(
+  normalized_sce,
   dimred = "UMAP",
   color_by = pathway_to_plot,
   shape = "tumor_cell"
 ) +
-  ggplot2::ggtitle(stringr::str_replace_all(pathway_to_plot, 
+  ggplot2::ggtitle(stringr::str_replace_all(pathways_to_plot, 
                                             "\\_", 
-                                            " "))  
+                                            " "))
+umap
+
+
+out_dir <- fs::path(processed_dir, glue::glue("{pathway_to_plot}.png"))
+ggplot2::ggsave(umap, file = out_dir, dpi=400, height=5, width=12)
 ```
 
 Sometimes using shape alone can make it difficult to see, so we can also facet based on `tumor_cell`:
