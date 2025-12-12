@@ -1,5 +1,0 @@
-"0","auc_df <- auc_df |>"
-"0","  # Use shorter names"
-"0","  dplyr::rename(zhang_auc = ewing_gene_set_names[[""zhang""]],"
-"0","                riggi_auc = ewing_gene_set_names[[""riggi""]])"
-"0",""

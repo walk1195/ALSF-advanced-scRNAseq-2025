@@ -1,3 +1,0 @@
-"0","# remove genes that are not detected in any of the cells from the SCE object"
-"0","genes_to_keep <- rowData(sce)$detected > 0"
-"0","sce <- sce[genes_to_keep, ]"

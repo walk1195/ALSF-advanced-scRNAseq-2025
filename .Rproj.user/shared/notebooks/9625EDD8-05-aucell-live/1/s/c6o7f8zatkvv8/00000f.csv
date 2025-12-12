@@ -1,7 +1,0 @@
-"0","# Extract the existing colData, and left join it with the AUC values by the"
-"0","# barcodes"
-"0","coldata_df <- colData(sce) |>"
-"0","  as.data.frame() |>"
-"0","  dplyr::left_join(auc_df, by = ""barcodes"")"
-"0",""
-"0","head(coldata_df)"

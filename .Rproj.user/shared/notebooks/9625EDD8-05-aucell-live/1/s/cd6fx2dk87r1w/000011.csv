@@ -1,5 +1,0 @@
-"0","scater::plotUMAP(sce, colour_by = ""riggi_auc"") +"
-"0","  # Use the gene set name, replacing underscores with spaces"
-"0","  ggplot2::ggtitle(stringr::str_replace_all(ewing_gene_set_names[[""riggi""]], "
-"0","                                            ""\\_"", "
-"0","                                            "" ""))"

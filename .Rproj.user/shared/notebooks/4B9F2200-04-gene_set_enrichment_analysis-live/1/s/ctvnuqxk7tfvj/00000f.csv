@@ -1,2 +1,0 @@
-"0","gsea_results@result |> "
-"0","  readr::write_tsv(output_file)"

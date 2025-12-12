@@ -1,5 +1,0 @@
-"0","# We need to save this as a DataFrame"
-"0","colData(sce) <- DataFrame("
-"0","  coldata_df,"
-"0","  row.names = colData(sce)$barcodes"
-"0",")"

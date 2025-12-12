@@ -1,6 +1,0 @@
-"0","# Setting 2 max ranks to inspect the effect of changing it"
-"0","auc_max_rank <- ceiling(nrow(cell_rankings) * 0.01)"
-"0",""
-"0","auc_max_rank_lower <- ceiling(nrow(cell_rankings) * 0.005)"
-"0",""
-"0","auc_max_rank_higher <- ceiling(nrow(cell_rankings) * 0.05)"

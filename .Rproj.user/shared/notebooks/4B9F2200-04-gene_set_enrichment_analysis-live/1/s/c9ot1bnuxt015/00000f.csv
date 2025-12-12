@@ -1,4 +1,0 @@
-"0","View("
-"0","  gsea_results@result |>"
-"0","    dplyr::arrange(dplyr::desc(NES))"
-"0",")"

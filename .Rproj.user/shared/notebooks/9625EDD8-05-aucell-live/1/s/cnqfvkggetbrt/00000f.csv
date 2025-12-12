@@ -1,8 +1,0 @@
-"0","# Input data "
-"0","ewing_data_dir <- fs::path(""data"", ""ewing-sarcoma"")"
-"0","processed_dir <- fs::path(ewing_data_dir, ""processed"")"
-"0",""
-"0","# Directory for holding pathway analysis results"
-"0","analysis_dir <- fs::path(""analysis"", ""ewing-sarcoma"", ""pathway-analysis"")"
-"0","# Create if it doesn't exist yet"
-"0","fs::dir_create(analysis_dir)"

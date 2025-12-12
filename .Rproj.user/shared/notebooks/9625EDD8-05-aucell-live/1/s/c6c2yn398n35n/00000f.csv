@@ -1,8 +1,0 @@
-"0","auc_threshold_df <- data.frame("
-"0","  gene_set = ewing_gene_set_names,"
-"0","  # Grab thresholds associated with each gene set from assignements object"
-"0","  threshold = c(auc_assignments[[ewing_gene_set_names[""zhang""]]]$aucThr$selected, "
-"0","                auc_assignments[[ewing_gene_set_names[""riggi""]]]$aucThr$selected)"
-"0",")"
-"0",""
-"0","auc_threshold_df"
